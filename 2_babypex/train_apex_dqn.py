@@ -1,24 +1,37 @@
+
+import torch
 import ray
 import numpy as np
+
+from actor import Actor
+from replay_buffer import ReplayBuffer
+from parameter_server import ParameterServer
+from models import models
+from learner import Learner
 
 max_samples = 500000
 config = {
     "env": "CartPole-v0",
+    "num_actions": 2,
+    "observation_shape": (4,),
+
+    "target_network_update_interval": 500,
     "num_workers": 50,
     "eval_num_workers": 10,
+    "eval_device": "cpu",
+    "train_device": "gpu",
     "n_step": 3,
     "max_eps": 0.5,
     "train_batch_size": 512,
     "gamma": 0.99,
     "fcnet_hiddens": [256, 256],
-    "fcnet_activation": "tanh",
+    "fcnet_activation": "relu",
     "lr": 1e-4,
     "buffer_size": 1_000_000,
     "learning_starts": 5_000,
     "timesteps_per_iteration": 10_000,
-    "grad_clip": 10
+    "grad_clip": 10,
 }
-
 
 
 ray.init()
@@ -43,7 +56,6 @@ for i in range(config["num_workers"]):
         epsilon)
     training_actor.sample.remote()
     train_actor_ids.append(training_actor)
-
 
 #   start eval actors
 for i in range(config["eval_num_workers"]):
