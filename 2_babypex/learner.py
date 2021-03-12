@@ -11,10 +11,8 @@ from models import get_q_network
 
 @ray.remote
 class Learner:
-    def __init__(self, config,
-            replay_buffer, parameter_server):
+    def __init__(self, config, replay_buffer, parameter_server):
         self.config = config
-        self.target_network_update_interval = self.config.get("target_network_update_interval", 500)
         self.replay_buffer = replay_buffer
         self.parameter_server = parameter_server
 
@@ -30,17 +28,11 @@ class Learner:
         self.total_collected_samples = 0
         self.samples_since_last_update = 0
 
-        self.optimizer = optim.Adam(self.parameters(), lr=config["lr"])
+        self.optimizer = optim.Adam(self.q_net.parameters(), lr=config["lr"])
         self.loss = nn.MSELoss()
 
-        self.send_weights_to_parameter_server()
+        self.send_weights()
         self.stopped = False
-
-        self.send_weights_to_parameter_server()
-        self.stopped = False
-
-    def send_weights_to_parameter_server(self):
-        self.parameter_server.update_weights.remote(self.q_net.state_dict())
 
     def send_weights(self):
         id = self.parameter_server.update_weights.remote(self.q_net.state_dict())
@@ -59,8 +51,8 @@ class Learner:
                 self.learn()
 
     def learn(self):
-        samples = ray.get(
-            self.replay_buffer.sample.remote(self.train_batch_size))
+        samples_id = self.replay_buffer.sample.remote(self.train_batch_size)
+        samples = ray.get(samples_id)
 
         if not samples:
             print("No samples received from the buffer.")
@@ -76,14 +68,14 @@ class Learner:
         
             #   experience = (state, action, discounted_return, last_state, done, cum_gamma)
             states, actions, rewards, states_, dones, gammas = list(zip(*samples))
-            states  = torch.tensor( states  ).to(self.device)
-            actions = torch.tensor( actions ).to(self.device)
-            rewards = torch.tensor( rewards ).to(self.device)
-            states_ = torch.tensor( states_ ).to(self.device)
-            dones   = torch.tensor( dones   ).to(self.device)
-            gammas  = torch.tensor( gammas  ).to(self.device)
+            states  = torch.tensor( states , dtype=torch.float32).to(self.device)
+            actions = torch.tensor( actions, dtype=torch.long   ).to(self.device)
+            rewards = torch.tensor( rewards, dtype=torch.float32).to(self.device)
+            states_ = torch.tensor( states_, dtype=torch.float32).to(self.device)
+            dones   = torch.tensor( dones,   dtype=torch.bool   ).to(self.device)
+            gammas  = torch.tensor( gammas,  dtype=torch.float32).to(self.device)
 
-            batch_indices = np.arange(self.batch_size, dtype=np.int64)
+            batch_indices = np.arange(batch_size, dtype=np.int64)
             action_qs = self.q_net(states)[batch_indices, actions]    #   (batch_size, 1)
 
             policy_qs = self.q_net(states_)             #   (batch_size, num_actions)
@@ -105,6 +97,6 @@ class Learner:
             self.send_weights()
 
             if self.samples_since_last_update > self.target_network_update_interval:
-                self.target_network.load_state_dict(self.q_net.state_dict())
+                self.target_q_net.load_state_dict(self.q_net.state_dict())
                 self.samples_since_last_update = 0
             return True
