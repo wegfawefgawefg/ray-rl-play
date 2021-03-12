@@ -15,6 +15,7 @@ class Learner:
         self.config = config
         self.replay_buffer = replay_buffer
         self.parameter_server = parameter_server
+        self.target_network_update_interval = config.get("target_network_update_interval", 32)
 
         self.device = torch.device("cpu")
         if config["eval_device"] == "gpu":

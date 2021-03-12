@@ -19,6 +19,7 @@ def get_env_configs(config):
     env = gym.make(config["env"])
     config["num_actions"] = env.action_space.n
     config["observation_shape"] = env.observation_space.shape
+    return config
 
 def main(config, max_samples):
     get_env_configs(config)
@@ -89,7 +90,7 @@ if __name__ == "__main__":
     max_samples = 5_000_000
     config = {
         "env": "CartPole-v0",
-        "target_network_update_interval": 32,
+        "target_network_update_interval": 512,
         "num_workers": 50,
         "eval_num_workers": 10,
         "eval_device": "cpu",
@@ -98,7 +99,7 @@ if __name__ == "__main__":
         "max_eps": 0.5,
         "train_batch_size": 32,
         "gamma": 0.75,
-        "fcnet_hiddens": [256, 256],
+        "fcnet_hiddens": [1024, 512],
         "fcnet_activation": "relu",
         "lr": 1e-4,
         "buffer_size": 1_000_000,
@@ -106,7 +107,7 @@ if __name__ == "__main__":
         "timesteps_per_iteration": 32,
         "grad_clip": 10,
 
-        "q_update_freq": 100,
-        "send_experience_freq": 100,
+        "q_update_freq": 256,
+        "send_experience_freq": 256,
     }
     main(config, max_samples)

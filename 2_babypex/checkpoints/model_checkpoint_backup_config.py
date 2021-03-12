@@ -1,0 +1,22 @@
+config = {
+    "env": "CartPole-v0",
+    "target_network_update_interval": 512,
+    "num_workers": 50,
+    "eval_num_workers": 10,
+    "eval_device": "cpu",
+    "train_device": "cpu",
+    "n_step": 3,
+    "max_eps": 0.5,
+    "train_batch_size": 32,
+    "gamma": 0.75,
+    "fcnet_hiddens": [256, 256],
+    "fcnet_activation": "relu",
+    "lr": 1e-4,
+    "buffer_size": 1_000_000,
+    "learning_starts": 5_000,
+    "timesteps_per_iteration": 32,
+    "grad_clip": 10,
+
+    "q_update_freq": 256,
+    "send_experience_freq": 256,
+}
